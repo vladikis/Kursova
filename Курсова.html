@@ -1,0 +1,395 @@
+<html lang="en">
+	<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+	<script src="main.js"></script>
+	</head>
+	<body style="background:#eee;">
+	</body>
+	<style>
+	.LoadButton{display:block;position:absolute; z-index:5000;}
+	.LoadButton .form-group{padding:1em;margin:1em}
+	.LoadButton input[type=file]{outline:0;opacity:0;pointer-events:none;user-select:none}
+	.LoadButton .label{width:120px;border:3px dashed grey;border-radius:5px;display:block;padding:1.2em;transition:1s ease;cursor:pointer;text-align:center}
+	.LoadButton .label i{display:block;font-size:42px;padding-bottom:16px}
+	.LoadButton .label i,.LoadButton .label .title{color:grey;transition:1s;}
+	.LoadButton .label:hover{border:3px solid #000;}
+	.LoadButton .label:hover i,.LoadButton .label:hover .title{color:#000;}
+	.text{
+		position:absolute;
+		display:block;
+		top:50%;
+		left:50%;
+		border: 3px dashed grey;
+		padding:10px;
+		transform: translate(-50%);
+		font-weight: bold;
+		color: grey;
+	}
+	</style>
+	<script>
+        class Line {
+            constructor(element1, element2, type = 0) {
+                this.id = window.lines.length + 1;
+                const xmlns = "http://www.w3.org/2000/svg";
+                this.line = document.createElementNS(xmlns, 'path');
+                this.e1 = element1;
+                this.e2 = element2;
+                this.e1.line.push(this.id);
+                this.e2.line.push(this.id);
+                this.line.setAttributeNS(null, "stroke", "#7175ad");
+                this.line.setAttributeNS(null, "fill", "transparent");
+                this.line.setAttributeNS(null, "stroke-width", "3");
+                this.line.setAttributeNS(null, "stroke-linecap", "round");
+                this.arrow = document.createElement("div");
+                window.lineBlock.append(this.line);
+                window.body.append(this.arrow);
+                this.update();
+            }
+            update() {
+                let obj1 = this.e1.Elem.getBoundingClientRect();
+                let obj2 = this.e2.Elem.getBoundingClientRect();
+                let center1 = { x: pageXOffset + obj1.x + obj1.width / 2, y: pageYOffset + obj1.y + obj1.height / 2 };
+                let center2 = { x: pageXOffset + obj2.x + obj2.width / 2, y: pageYOffset + obj2.y + obj2.height / 2 };
+                let coords = Line.Coord(this.e1, this.e2, obj1, obj2);
+                let x = coords[0][0] + (coords[1][0] - coords[0][0]) / 100 * 97;
+                let y = coords[0][1] + (coords[1][1] - coords[0][1]) / 100 * 97;
+                this.line.setAttributeNS(null, "d", "M" + coords[0][0] + "," + coords[0][1] + " C" + coords[2][0] + "," + coords[0][1] + " " + coords[2][1] + "," + y + " " + x + "," + y);
+                this.arrow.setAttribute("style", "width: 0;  height: 0; transform-origin: bottom;  border-style: solid;  border-width: 0.7em 0.7em 0.7em 0.7em;  border-color: transparent transparent #7175ad transparent; position:absolute; top:" + (y - 22) + "px;left:" + (x - 10) + "px; transform: rotate(" + (Line.angle(coords[0][0], coords[0][1], center2.x, center2.y) + 90) + "deg);");
+            }
+            static Coord(element1, element2, obj1, obj2) {
+                let c = Line.Coords(element1, element2);
+                let x1 = pageXOffset + c[0][0];
+                let x2 = pageXOffset + c[1][0];
+                let y1 = pageYOffset + c[0][1];
+                let y2 = pageYOffset + c[1][1];
+                const ddx = (x2 - x1) * 0.3;
+                const coord1 = x1 + ddx;
+                const coord2 = x2 - ddx;
+                return [[x1, y1], [x2, y2], [coord1, coord2]];
+            }
+            static Coords(element1, element2) {
+                let obj1 = element1.Elem.getBoundingClientRect();
+                let obj2 = element2.Elem.getBoundingClientRect();
+                let center1 = { x: obj1.x + obj1.width / 2, y: obj1.y + obj1.height / 2 };
+                let center2 = { x: obj2.x + obj2.width / 2, y: obj2.y + obj2.height / 2 };
+                let coords = [
+                    [[obj1.left, center1.x, obj1.right], [obj1.top, center1.y, obj1.bottom]],
+                    [[obj2.left, center2.x, obj2.right], [obj2.top, center2.y, obj2.bottom]]
+                ];
+                let points1 = [];
+                let points2 = [];
+                for (let i = 0; i < coords[0][0].length; i++) {
+                    for (let k = 0; k < coords[0][0].length; k++) {
+                        points1.push([coords[0][0][i], coords[0][1][k]]);
+                        points2.push([coords[1][0][i], coords[1][1][k]]);
+                    }
+                }
+                let last = 99999;
+                let x1, x2, y1, y2;
+                for (let i = 0; i < points1.length; i++) {
+                    for (let k = 0; k < points2.length; k++) {
+                        if ((obj2.left <= points1[i][0] && points1[i][0] <= obj2.right) && (obj2.top <= points1[i][1] && points1[i][1] <= obj2.bottom)) continue;
+                        if ((obj1.left <= points2[k][0] && points2[k][0] <= obj1.right) && (obj1.top <= points2[k][1] && points2[k][1] <= obj1.bottom)) continue;
+                        let distance = Math.sqrt(Math.pow(points2[k][0] - points1[i][0], 2) + Math.pow(points2[k][1] - points1[i][1], 2));
+                        if (distance < last && distance >= 50) {
+                            last = distance;
+                            x1 = points1[i][0];
+                            x2 = points2[k][0];
+                            y1 = points1[i][1];
+                            y2 = points2[k][1];
+                        }
+                    }
+                }
+                return [[x1, y1], [x2, y2]];
+            }
+            static angle(cx, cy, ex, ey) {
+                var dy = ey - cy;
+                var dx = ex - cx;
+                var theta = Math.atan2(dy, dx);
+                theta *= 180 / Math.PI;
+                if (theta < 0) theta = 360 + theta;
+                return theta;
+            }
+        }
+
+        class Block {
+            constructor() {
+                this.line = [];
+                this.id = window.blocks.length + 1;
+                this.Elements = [];
+                const xmlns = "http://www.w3.org/2000/svg";
+                this.Elem = document.createElementNS(xmlns, 'svg');
+                this.Elem.setAttributeNS(null, "draggable", "true");
+                this.Elem.setAttributeNS(null, "width", 290);
+                this.Elem.setAttributeNS(null, "height", 10);
+                let x = randomInteger(50, document.documentElement.clientWidth - 50);
+                let y = randomInteger(50, document.documentElement.clientHeight - 50);
+                this.Elem.setAttributeNS(null, "style", "position:absolute;top:" + y + ";left:" + x + ";z-index:2; fill-opacity: 0.7;");
+                this.Elem.style.cursor = "all-scroll";
+                this.Rect = document.createElementNS(xmlns, 'rect');
+                this.Rect.setAttributeNS(null, "width", 290);
+                this.Rect.setAttributeNS(null, "height", 10);
+                this.Rect.setAttributeNS(null, "rx", 15);
+                this.Rect.setAttributeNS(null, "style", "fill:#a1a5e4;");
+                this.Elem.append(this.Rect);
+                window.body.append(this.Elem);
+                MoveListenner(this);
+            }
+            addElem(elem) {
+                let h = this.Elem.getAttributeNS(null, "height");
+                elem.Elem.setAttributeNS(null, "y", this.Elements.length * 62 + 5);
+                elem.Elem.setAttributeNS(null, "x", 5);
+                this.Elem.setAttributeNS(null, "height", parseInt(h) + 62);
+                this.Rect.setAttributeNS(null, "height", parseInt(h) + 62);
+                this.Elements.push(elem);
+                this.Elem.append(elem.Elem);
+            }
+        }
+        class Element {
+            constructor(name, block, s_id = 0) {
+                this.line = [];
+                this.block = block;
+                this.name = name;
+                this.s_id = s_id;
+                const xmlns = "http://www.w3.org/2000/svg";
+                this.id = window.Elems.length + 1;
+                let x = randomInteger(50, document.documentElement.clientWidth - 50);
+                let y = randomInteger(50, document.documentElement.clientHeight - 50);
+                this.Elem = document.createElementNS(xmlns, 'svg');
+                this.Elem.setAttributeNS(null, "style", "position:absolute;top:" + y + ";left:" + x + "; z-index:2;-moz-user-select: none;-khtml-user-select: none;user-select: none;fill-opacity: 0.95;");
+                this.Elem.setAttributeNS(null, "width", 280);
+                this.Elem.setAttributeNS(null, "y", 0);
+                this.Elem.setAttributeNS(null, "height", 60);
+                this.Rect = document.createElementNS(xmlns, 'rect');
+                this.Rect.setAttributeNS(null, "width", 280);
+                this.Rect.setAttributeNS(null, "height", 60);
+                this.Rect.setAttributeNS(null, "style", "fill:#4a61a0;stroke:#8998bf;stroke-miterlimit:1;stroke-width:3;");
+                this.Rect.setAttributeNS(null, "rx", 15);
+                this.Elem.append(this.Rect);
+                this.Text = document.createElementNS(xmlns, 'text');
+                this.Text.setAttributeNS(null, "x", "50%");
+                this.Text.setAttributeNS(null, "y", "50%");
+                this.Text.setAttributeNS(null, "dominant-baseline", "middle");
+                this.Text.setAttributeNS(null, "text-anchor", "middle");
+                this.Text.setAttributeNS(null, "font-size", "10");
+                this.Text.setAttributeNS(null, "fill", "white");
+                if (name.length <= 43) this.Text.innerHTML = name;
+                else {
+                    let words = name.split(' ');
+                    let temp = (words.length - words.length % 2) / 2;
+                    let line1 = "";
+                    let line2 = "";
+                    for (let k = 0; k < temp; k++) line1 += " " + words[k];
+                    for (let k = temp; k < words.length; k++) line2 += " " + words[k];
+                    this.Text.innerHTML = "<tspan x='50%' y='40%'>" + line1 + "</tspan><tspan x='50%' dy='1em'>" + line2 + "</tspan>";
+                }
+                this.Elem.append(this.Text);
+                if (block) {
+                    for (let i = 0; i < window.blocks.length; i++) {
+                        if (window.blocks[i].id == block) {
+                            window.blocks[i].addElem(this);
+                            break;
+                        }
+                    }
+                } else {
+                    window.body.append(this.Elem);
+                    this.Elem.style.cursor = "all-scroll";
+                    MoveListenner(this);
+                }
+            }
+        }
+
+        window.onload = function () {
+            window.body = document.querySelector('body');
+            window.Elems = [];
+            window.lines = [];
+            window.blocks = [];
+            DeleteAll();
+        }
+        function createLoadButton() {
+            window.loadbtn = document.createElement("div");
+            window.loadbtn.setAttribute("class", "LoadButton");
+            window.loadbtn.innerHTML = '<div class="form-group">\
+		<label class="label">\
+		  <i class="material-icons">attach_file</i>\
+		  <span class="title">Завантажити CSV</span>\
+		  <input type="file">\
+		</label>\
+	  </div>';
+            window.body.prepend(window.loadbtn);
+            DropFileListenners();
+        }
+        function DeleteAll() {
+            window.Elements = [];
+            window.Lines1 = [];
+            for (let i = 0; i < window.Elems.length; i++) { window.Elems[i].Elem.onmousedown = null; window.Elems[i].Elem.remove(); delete window.Elems[i]; }
+            for (let i = 0; i < window.lines.length; i++) { window.lines[i].arrow.remove(); window.lines[i].line.remove(); delete window.lines[i]; }
+            for (let i = 0; i < window.blocks.length; i++) { window.blocks[i].Elem.onmousedown = null; window.blocks[i].Elem.remove(); window.blocks[i]; }
+            window.Elems = [];
+            window.lines = [];
+            window.blocks = [];
+            if (window.loadbtn) window.loadbtn.remove();
+            if (window.mainText) window.mainText.remove();
+            window.mainText = document.createElement("div");
+            window.mainText.setAttribute("class", "text");
+            window.mainText.innerText = "Натисніть \"Завантажити CSV\" або перетягніть на кнопку файл для завантаження";
+            window.body.prepend(window.mainText);
+            createLoadButton();
+        }
+        function DropFileListenners() {
+            const inputElement = document.querySelector(".LoadButton input");
+            inputElement.addEventListener("change", FileLoaded, false);
+            function FileLoaded(files) {//Зчитування файлу
+                let File = files[0] ? files[0] : this.files[0];
+                let reader = new FileReader();
+                DeleteAll();
+                reader.onload = function (progressEvent) {
+                    let lines = this.result.split('\n');
+                    for (let line = 1; line < lines.length; line++) {
+                        let l = lines[line].split(';');
+                        if (l[0] && l[1]) { //   Загрузка Елементів
+                            let array = [l[0], parseInt(l[1])];
+                            if (l[2]) array.push(parseInt(l[2]));
+                            window.Elements.push(array);
+                        }
+                        if (l[7] && l[8] && l[9])//Загрузка зв'язків
+                        {
+                            window.Lines1.push([parseInt(l[7]), parseInt(l[8]), parseInt(l[9])]);
+                        }
+                    }
+                    CreateBlocks(window.Elements);
+                    CreateElements(window.Elements);
+                    CreateLineBlocks(window.Lines1);
+                    if (window.mainText) window.mainText.remove();
+                };
+                reader.readAsText(File, 'Windows-1251');
+            }
+            function dragenter(e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            function dragover(e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            function drop(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                let files = e.dataTransfer.files;
+                FileLoaded(files);
+            }
+            let DBox = document.querySelector(".LoadButton");
+            DBox.addEventListener("dragenter", dragenter, false);
+            DBox.addEventListener("dragover", dragover, false);
+            DBox.addEventListener("drop", drop, false);
+
+        }
+        function CreateBlocks(Elements) {
+            window.blocks = [];
+            count = 0;
+            for (let i = 0; i < Elements.length; i++) {
+                if (Elements[i][1] > count) {
+                    count = Elements[i][1];
+                    let block = new Block();
+                    window.blocks.push(block);
+                }
+            }
+        }
+        function MoveListenner(b) {
+            b.Elem.onmousedown = function (event) {
+                let shiftX = event.clientX - b.Elem.getBoundingClientRect().left;
+                let shiftY = event.clientY - b.Elem.getBoundingClientRect().top;
+                b.Elem.style.position = 'absolute';
+                b.Elem.style.zIndex = 1000;
+                document.body.append(b.Elem);
+                moveAt(event.pageX, event.pageY);
+                function moveAt(pageX, pageY) {
+                    b.Elem.style.left = pageX - shiftX + 'px';
+                    b.Elem.style.top = pageY - shiftY + 'px';
+                    for (let k = 0; k < b.line.length; k++) {
+                        for (let i = 0; i < window.lines.length; i++) {
+                            if (b.line[k] == window.lines[i].id) window.lines[i].update();
+                        }
+                    }
+                }
+                function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+                document.addEventListener('mousemove', onMouseMove);
+                b.Elem.onmouseup = function () {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    b.Elem.onmouseup = null;
+                };
+            };
+            b.Elem.ondragstart = function () { return false; };
+        }
+        function CreateLineBlocks(Lines) {
+            const xmlns = "http://www.w3.org/2000/svg";
+            if (!window.lineBlock) window.lineBlock = document.createElementNS(xmlns, 'svg');
+            window.lineBlock.setAttributeNS(null, "width", document.documentElement.clientWidth * 2);
+            window.lineBlock.setAttributeNS(null, "height", document.documentElement.clientHeight * 2);
+            window.lineBlock.setAttributeNS(null, "style", "position:absolute;top:0;left:0;");
+            window.body.append(window.lineBlock);
+            window.lines = [];
+            for (let i = 0; i < Lines.length; i++) {
+                if (!Lines[i][2])//Від блоку до блоку
+                {
+                    let elem1 = window.blocks[Lines[i][0] - 1];
+                    let elem2 = window.blocks[Lines[i][1] - 1];
+                    let line = new Line(elem1, elem2);
+                    window.lines.push(line);
+                }
+                else if (Lines[i][2] == 1)//Від блоку до елементу
+                {
+                    let elem1 = window.blocks[Lines[i][0] - 1];
+                    let elem2 = null;
+                    for (let k = 0; k < window.Elems.length; k++) {
+                        if (window.Elems[k].s_id == Lines[i][1]) { elem2 = window.Elems[k]; }
+                    }
+                    if (elem2) {
+                        let line = new Line(elem1, elem2);
+                        window.lines.push(line);
+                    }
+                }
+                else if (Lines[i][2] == 2)//Від елементу до блоку
+                {
+                    let elem1 = null;
+                    let elem2 = window.blocks[Lines[i][0] - 1];
+                    for (let k = 0; k < window.Elems.length; k++) {
+                        if (window.Elems[k].s_id == Lines[i][1]) { elem1 = window.Elems[k]; }
+                    }
+                    if (elem1) {
+                        let line = new Line(elem1, elem2);
+                        window.lines.push(line);
+                    }
+                }
+                else if (Lines[i][2] == 3)//Від елементу до елементу
+                {
+                    let elem1 = null;
+                    let elem2 = null;
+                    for (let k = 0; k < window.Elems.length; k++) {
+                        if (window.Elems[k].s_id == Lines[i][0]) { elem1 = window.Elems[k]; }
+                        if (window.Elems[k].s_id == Lines[i][1]) { elem2 = window.Elems[k]; }
+                    }
+                    if (elem1 && elem2) {
+                        let line = new Line(elem1, elem2);
+                        window.lines.push(line);
+                    }
+
+                }
+            }
+        }
+        function CreateElements(Elements) {
+            window.Elems = [];
+            count = 0;
+            for (let i = 0; i < Elements.length; i++) {
+                let s_id = Elements[i][2] ? Elements[i][2] : 0;
+                let Elem = new Element(Elements[i][0], Elements[i][1], s_id);
+                window.Elems.push(Elem);
+            }
+        }
+        function randomInteger(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+	</script>
+</html>
